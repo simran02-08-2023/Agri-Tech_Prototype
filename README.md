@@ -78,7 +78,7 @@ Voice: Web Speech API
 
 Clone or download this repository
 
-git clone https://github.com/your-username/Agri-Tech-Prototype.git
+git clone https://github.com/simran-02-08-2023/Agri-Tech-Prototype.git
 cd Agri-Tech-Prototype
 
 
