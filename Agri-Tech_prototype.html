@@ -1,0 +1,1174 @@
+//at line 813 of code edit your api key
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Agri-Tech Demo</title>
+
+<!-- Tailwind CSS (for rapid layout) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Leaflet for map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- FontAwesome icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+<style>
+  /* small custom styles to keep things tidy */
+  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background: #f3f4f6; color:#0f1724; }
+  .sidebar { width:260px; min-height:100vh; background:white; border-right:1px solid #e6e9ee; padding:18px; position:fixed; left:0; top:0; }
+  .content { margin-left:280px; padding:22px; }
+  .nav-item { display:flex; gap:10px; padding:10px; border-radius:8px; cursor:pointer; color:#374151; }
+  .nav-item.active { background:linear-gradient(90deg,#ecfdf5,#d1fae5); color:#065f46; font-weight:600; }
+  .card { background:white; border-radius:10px; padding:16px; box-shadow:0 8px 24px rgba(15,23,42,0.04); border:1px solid #eef2f7; }
+  .led { width:16px; height:16px; border-radius:50%; box-shadow:0 3px 8px rgba(2,6,23,0.12); display:inline-block; margin-right:8px;}
+  .led.green{background:linear-gradient(180deg,#34d399,#10b981);}
+  .led.amber{background:linear-gradient(180deg,#fbbf24,#f59e0b);}
+  .led.red{background:linear-gradient(180deg,#fb923c,#f97316);}
+  .chat-window { max-height:340px; overflow:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .msg.user { align-self:flex-end; background:#065f46; color:white; padding:8px 12px; border-radius:12px; }
+  .msg.bot { align-self:flex-start; background:#eef2f7; color:#0f1724; padding:8px 12px; border-radius:12px; }
+  @media (max-width:900px){ .sidebar{position:relative;width:100%;min-height:auto} .content{margin-left:0} }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="rounded-md bg-gradient-to-br from-green-400 to-teal-400 w-12 h-12 flex items-center justify-center font-bold text-white">AT</div>
+    <div>
+      <div id="sidebar-title" class="text-lg font-semibold" data-i18n="sidebar-title">Agri-Tech</div>
+      <div id="sidebar-subtitle" class="text-sm text-gray-500" data-i18n="sidebar-subtitle">Combined Prototype</div>
+    </div>
+  </div>
+
+  <nav class="space-y-2" aria-label="Main navigation">
+    <div class="nav-item active" data-section="home"> <i class="fas fa-home"></i> <span data-i18n="nav-home">Home</span></div>
+    <div class="nav-item" data-section="image"> <i class="fas fa-camera"></i> <span data-i18n="nav-image">Image Detection</span></div>
+    <div class="nav-item" data-section="kb"> <i class="fas fa-book"></i> <span data-i18n="nav-kb">Knowledge Base</span></div>
+    <div class="nav-item" data-section="chat"> <i class="fas fa-robot"></i> <span data-i18n="nav-chat">Chat / Voice</span></div>
+    <div class="nav-item" data-section="community"> <i class="fas fa-users"></i> <span data-i18n="nav-community">Community</span></div>
+    <div class="nav-item" data-section="market"> <i class="fas fa-store"></i> <span data-i18n="nav-market">Marketplace</span></div>
+    <div class="nav-item" data-section="dash"> <i class="fas fa-chart-line"></i> <span data-i18n="nav-dashboard">Dashboard</span></div>
+  </nav>
+
+  <div class="mt-6">
+    <label class="block text-xs text-gray-500 mb-1" data-i18n="label-language">Language</label>
+    <select id="langSelect" class="w-full p-2 rounded border">
+      <option value="en">English</option>
+      <option value="hi">हिन्दी (Hindi)</option>
+    </select>
+  </div>
+
+  <div class="mt-4">
+    <button id="voiceRead" class="w-full p-2 bg-emerald-500 text-white rounded flex items-center justify-center gap-2">
+      <i class="fas fa-microphone"></i> <span id="voiceLabel" data-i18n="btn-voice-assist">Voice Assistant</span>
+    </button>
+  </div>
+
+  <div class="mt-5 text-xs text-gray-400">
+    <div id="userId" class="break-words">User: local-mode</div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="content">
+  <!-- HOME -->
+  <section id="home-section" class="section">
+    <div class="card mb-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-semibold" data-i18n="welcome-header">Welcome, Farmer!</h2>
+          <p class="text-gray-600" data-i18n="welcome-subtitle">This demo merges field sensors, image detection, AgriStack consented data, chat/voice, and dashboards.</p>
+        </div>
+        <div class="text-sm text-gray-500">
+          <div data-i18n="demo-note-1">Open in VS Code Live Server</div>
+          <div class="mt-2" data-i18n="demo-note-2">Show this as a live prototype.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sensor summary + controls (PRECISION IMPROVEMENT) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div class="card">
+        <div class="flex items-center justify-between mb-3">
+          <div><strong data-i18n="field-indicator">Field indicator</strong><div class="text-xs text-gray-500" data-i18n="status-quick-glance">Quick glance status</div></div>
+          <div id="statusArea" class="flex items-center">
+            <span id="ledElm" class="led green" aria-hidden></span>
+            <div>
+              <div id="statusTitle" class="text-sm font-semibold text-green-600" data-i18n-dynamic="status-all-good">All good</div>
+              <div id="statusSub" class="text-xs text-gray-500" data-i18n-dynamic="status-no-action">No immediate action</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Added Soil pH for precision -->
+        <div class="grid grid-cols-2 gap-3 mt-4">
+          <div>
+            <div class="text-xs text-gray-500" data-i18n="sensor-soil-moisture">Soil moisture</div>
+            <div id="soilVal" class="text-xl font-bold">— %</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-500" data-i18n="sensor-temperature">Temperature</div>
+            <div id="tempVal" class="text-xl font-bold">— °C</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-500" data-i18n="sensor-humidity">Humidity</div>
+            <div id="humVal" class="text-xl font-bold">— %</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-500" data-i18n="sensor-ph">Soil pH</div>
+            <div id="pHVal" class="text-xl font-bold">—</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-500" data-i18n="sensor-battery">Battery</div>
+            <div id="batVal" class="text-xl font-bold">— %</div>
+          </div>
+        </div>
+
+        <div class="mt-4 flex gap-2">
+          <button id="simSensor" class="px-3 py-2 bg-gray-100 rounded" data-i18n="btn-sim-sensor">Simulate Sensor</button>
+          <button id="simWeather" class="px-3 py-2 bg-gray-100 rounded" data-i18n="btn-sim-weather">Simulate Weather</button>
+          <button id="genAdv" class="px-3 py-2 bg-emerald-500 text-white rounded" data-i18n="btn-gen-adv">Generate Advisory</button>
+        </div>
+
+        <div class="mt-4 text-xs text-gray-500">
+          <div data-i18n-prefix="data-water-saved">Water saved: <span id="waterSaved">0 L</span></div>
+          <div data-i18n-prefix="data-carbon-est">Carbon est.: <span id="carbonEst">0.00 kg CO₂</span></div>
+        </div>
+      </div>
+
+      <!-- Soil chart -->
+      <div class="card col-span-2 lg:col-span-1">
+        <div data-i18n="chart-soil-title"><strong>Soil moisture (recent)</strong></div>
+        <canvas id="soilChart" height="160"></canvas>
+      </div>
+
+      <!-- Temp chart -->
+      <div class="card col-span-2 lg:col-span-1">
+        <div data-i18n="chart-temp-title"><strong>Temperature (recent)</strong></div>
+        <canvas id="tempChart" height="160"></canvas>
+      </div>
+    </div>
+
+    <!-- AgriStack CSV + Consent -->
+    <div class="card mb-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <strong data-i18n="agristack-title">AgriStack sample data (consent)</strong>
+          <div class="text-xs text-gray-500" data-i18n="agristack-subtitle">Upload an anonymized sample CSV to show consented-data usage in models (demo only).</div>
+        </div>
+        <div>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" id="consentToggle" checked />
+            <span class="text-xs text-gray-500" data-i18n="agristack-consent">Consent given</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="col-span-2">
+          <div id="agriDrop" class="p-4 border-dashed border-2 border-gray-200 rounded text-center cursor-pointer" data-i18n="agristack-drop">
+            Drag & drop CSV or <label class="text-emerald-600 cursor-pointer"><input id="agriFile" type="file" accept=".csv" class="hidden"><span data-i18n="agristack-choose-file">choose file</span></label>
+            <div id="agriPreview" class="mt-2 text-xs text-gray-500"></div>
+          </div>
+        </div>
+        <div>
+          <button id="viewAgri" class="w-full p-2 bg-emerald-500 text-white rounded" data-i18n="agristack-view">View / Use data</button>
+          <button id="clearAgri" class="w-full p-2 mt-2 bg-gray-100 rounded" data-i18n="agristack-clear">Clear</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- IMAGE DETECTION -->
+  <section id="image-section" class="section hidden">
+    <div class="card mb-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-xl font-semibold" data-i18n="img-header">Image Detection</h3>
+          <div class="text-sm text-gray-500" data-i18n="img-subtitle">Upload a clear leaf image or use the camera to detect diseases. The system provides a diagnosis, confidence score, and specific recommendations based on analysis (Demo).</div>
+        </div>
+        <div>
+          <select id="cropSelect" class="p-2 border rounded">
+            <option value="" data-i18n="img-select-crop">-- Select crop --</option>
+            <option value="Tomato" data-i18n="crop-tomato">Tomato</option>
+            <option value="Potato" data-i18n="crop-potato">Potato</option>
+            <option value="Wheat" data-i18n="crop-wheat">Wheat</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="col-span-2">
+          <div id="uploadArea" class="p-6 border-dashed border-2 border-gray-200 rounded text-center cursor-pointer">
+            <input id="imgFile" type="file" accept="image/*" class="hidden">
+            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400"></i>
+            <div class="mt-2 text-gray-500" data-i18n="img-upload-prompt">Click to upload an image (or use camera via Capture)</div>
+            <img id="previewImg" src="" alt="" class="mx-auto mt-4 max-h-52 hidden rounded" />
+          </div>
+
+          <div id="liveArea" class="mt-4 flex gap-2">
+            <button id="startCam" class="px-3 py-2 bg-blue-500 text-white rounded" data-i18n="btn-start-cam">Start Camera</button>
+            <button id="capture" class="px-3 py-2 bg-red-500 text-white rounded hidden" data-i18n="btn-capture">Capture</button>
+            <button id="stopCam" class="px-3 py-2 bg-gray-100 rounded hidden" data-i18n="btn-stop-cam">Stop</button>
+          </div>
+
+          <div id="loadingDetect" class="mt-4 text-gray-500 hidden"><i class="fas fa-spinner fa-spin"></i> <span data-i18n="status-detecting">Detecting...</span></div>
+        </div>
+
+        <div>
+          <button id="detectBtn" class="w-full p-3 bg-emerald-500 text-white rounded" data-i18n="btn-detect-disease">Detect Disease</button>
+          <div id="detectResult" class="mt-4 text-sm text-gray-700 hidden card"></div>
+          <div id="treatmentBox" class="mt-4 text-sm text-gray-700 hidden card"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KNOWLEDGE BASE -->
+  <section id="kb-section" class="section hidden">
+    <div class="card">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-xl font-semibold" data-i18n="kb-header">Disease Knowledge Base</h3>
+          <div class="text-sm text-gray-500" data-i18n="kb-subtitle">Search common disease entries (demo/local data).</div>
+        </div>
+        <div>
+          <input id="kbSearch" type="text" data-i18n-placeholder="kb-search-placeholder" placeholder="Search..." class="p-2 border rounded"/>
+        </div>
+      </div>
+      <div id="kbList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+  </section>
+
+  <!-- CHAT / VOICE -->
+  <section id="chat-section" class="section hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card">
+        <h3 class="font-semibold" data-i18n="chat-header">Chat with AgriBot</h3>
+        <div class="text-xs text-gray-500 mb-2" data-i18n="chat-subtitle">Uses a model API placeholder (Gemini-like). API key should be injected on server-side; this demo uses a safe placeholder & retry logic.</div>
+
+        <div class="chat-window" id="chatWindow">
+          <div class="msg bot" data-i18n-dynamic="chat-welcome-msg">Hello! I am AgriBot. Ask about irrigation, pests, soil, or upload a photo to diagnose.</div>
+        </div>
+
+        <div class="mt-3 flex gap-2">
+          <input id="chatInput" class="flex-1 p-2 border rounded" data-i18n-placeholder="chat-input-placeholder" placeholder="Type your question..." />
+          <button id="chatSend" class="px-3 py-2 bg-emerald-500 text-white rounded" data-i18n="btn-send">Send</button>
+        </div>
+        <div id="chatLoading" class="text-gray-500 mt-2 hidden"><i class="fas fa-spinner fa-spin"></i> <span data-i18n="status-thinking">Thinking...</span></div>
+      </div>
+
+      <div class="card">
+        <h3 class="font-semibold" data-i18n="voice-header">Voice / TTS</h3>
+        <div class="text-sm text-gray-500 mb-4" data-i18n="voice-subtitle">Press Speak to hear the last advisory or active section content.</div>
+        <div class="flex gap-2">
+          <button id="speakBtn" class="px-3 py-2 bg-blue-500 text-white rounded">🔊 <span data-i18n="btn-speak">Speak</span></button>
+          <button id="synthAdv" class="px-3 py-2 bg-gray-100 rounded" data-i18n="btn-speak-adv">Speak Advisory</button>
+        </div>
+
+        <div class="mt-4">
+          <strong data-i18n="agro-request-title">Request Agronomist</strong>
+          <div class="mt-2">
+            <button id="callAgro" class="px-3 py-2 bg-amber-400 text-white rounded" data-i18n="btn-request-visit">Request Visit</button>
+            <div id="agroLog" class="text-xs text-gray-500 mt-2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMMUNITY -->
+  <section id="community-section" class="section hidden">
+    <div class="card">
+      <h3 class="font-semibold" data-i18n="community-header">Community Forum</h3>
+      <textarea id="postBox" class="w-full p-2 border rounded mt-2" rows="3" data-i18n-placeholder="community-placeholder" placeholder="Share tips, questions..."></textarea>
+      <div class="mt-2 flex gap-2">
+        <button id="postBtn" class="px-3 py-2 bg-emerald-500 text-white rounded" data-i18n="btn-post">Post</button>
+      </div>
+      <div id="posts" class="mt-4 space-y-3"></div>
+    </div>
+  </section>
+
+  <!-- MARKETPLACE -->
+  <section id="market-section" class="section hidden">
+    <div class="card">
+      <h3 class="font-semibold" data-i18n="market-header">Marketplace (mock)</h3>
+      <div id="products" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4"></div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="dash-section" class="section hidden">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="card">
+        <h3 class="font-semibold" data-i18n="dash-trend-title">Disease Trend Analysis</h3>
+        <canvas id="trendChart" height="160"></canvas>
+      </div>
+      <div class="card">
+        <h3 class="font-semibold" data-i18n="dash-map-title">Outbreak Heatmap</h3>
+        <div id="map" style="height:300px;"></div>
+      </div>
+      <div class="card md:col-span-2">
+        <h3 class="font-semibold" data-i18n="dash-alerts-title">Alerts</h3>
+        <div id="alerts" class="mt-2 space-y-2"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="mt-6 text-xs text-gray-400" data-i18n="footer-note">Prototype for demo — not production. Keep API keys server-side and use consented AgriStack data only with correct authorization.</div>
+</div>
+
+<!-- Modal for messages -->
+<div id="modal" class="fixed inset-0 hidden items-center justify-center bg-black bg-opacity-40">
+  <div class="bg-white p-4 rounded w-96">
+    <div id="modalTitle" class="font-semibold"></div>
+    <div id="modalBody" class="text-sm text-gray-600 mt-2"></div>
+    <div class="mt-4 text-right">
+      <button id="modalClose" class="px-3 py-1 bg-emerald-500 text-white rounded" data-i18n-dynamic="btn-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================
+   Localization Data
+   ============================ */
+const translations = {
+  en: {
+    'sidebar-title': 'Agri-Tech',
+    'sidebar-subtitle': 'Combined Prototype',
+    'nav-home': 'Home',
+    'nav-image': 'Image Detection',
+    'nav-kb': 'Knowledge Base',
+    'nav-chat': 'Chat / Voice',
+    'nav-community': 'Community',
+    'nav-market': 'Marketplace',
+    'nav-dashboard': 'Dashboard',
+    'label-language': 'Language',
+    'btn-voice-assist': 'Voice Assistant',
+    'welcome-header': 'Welcome, Farmer!',
+    'welcome-subtitle': 'This demo merges field sensors, image detection, AgriStack consented data, chat/voice, and dashboards.',
+    'demo-note-1': 'Open in VS Code Live Server',
+    'demo-note-2': 'Show this as a live prototype.',
+    'field-indicator': 'Field indicator',
+    'status-quick-glance': 'Quick glance status',
+    'status-all-good': 'All systems nominal',
+    'status-attention': 'Attention required',
+    'status-critical': 'Critical Alert',
+    'status-no-action': 'No immediate action',
+    'status-action-soon': 'Action recommended soon',
+    'status-action-today': 'Immediate action needed',
+    'sensor-soil-moisture': 'Soil moisture',
+    'sensor-temperature': 'Temperature',
+    'sensor-humidity': 'Humidity',
+    'sensor-battery': 'Battery',
+    'sensor-ph': 'Soil pH',
+    'btn-sim-sensor': 'Simulate Sensor',
+    'btn-sim-weather': 'Simulate Weather',
+    'btn-gen-adv': 'Generate Advisory',
+    'data-water-saved': 'Water saved:',
+    'data-carbon-est': 'Carbon est.:',
+    'chart-soil-title': 'Soil moisture (recent)',
+    'chart-temp-title': 'Temperature (recent)',
+    'agristack-title': 'AgriStack sample data (consent)',
+    'agristack-subtitle': 'Upload an anonymized sample CSV to show consented-data usage in models (demo only).',
+    'agristack-consent': 'Consent given',
+    'agristack-drop': 'Drag & drop CSV or',
+    'agristack-choose-file': 'choose file',
+    'agristack-view': 'View / Use data',
+    'agristack-clear': 'Clear',
+    'img-header': 'Image Detection',
+    'img-subtitle': 'Upload a clear leaf image or use the camera to detect diseases. The system provides a diagnosis, confidence score, and specific recommendations based on analysis (Demo).',
+    'img-select-crop': '-- Select crop --',
+    'crop-tomato': 'Tomato', 'crop-potato': 'Potato', 'crop-wheat': 'Wheat',
+    'img-upload-prompt': 'Click to upload an image (or use camera via Capture)',
+    'btn-start-cam': 'Start Camera', 'btn-capture': 'Capture', 'btn-stop-cam': 'Stop',
+    'status-detecting': 'Detecting...',
+    'btn-detect-disease': 'Detect Disease',
+    'kb-header': 'Disease Knowledge Base',
+    'kb-subtitle': 'Search common disease entries (demo/local data).',
+    'kb-search-placeholder': 'Search...',
+    'chat-header': 'Chat with AgriBot',
+    'chat-subtitle': 'Uses a model API placeholder (Gemini-like). API key should be injected on server-side; this demo uses a safe placeholder & retry logic.',
+    'chat-welcome-msg': 'Hello! I am AgriBot. Ask about irrigation, pests, soil, or upload a photo to diagnose.',
+    'chat-input-placeholder': 'Type your question...',
+    'btn-send': 'Send',
+    'status-thinking': 'Thinking...',
+    'voice-header': 'Voice / TTS',
+    'voice-subtitle': 'Press Speak to hear the last advisory or active section content.',
+    'btn-speak': 'Speak',
+    'btn-speak-adv': 'Speak Advisory',
+    'agro-request-title': 'Request Agronomist',
+    'btn-request-visit': 'Request Visit',
+    'community-header': 'Community Forum',
+    'community-placeholder': 'Share tips, questions...',
+    'btn-post': 'Post',
+    'market-header': 'Marketplace (mock)',
+    'dash-trend-title': 'Disease Trend Analysis',
+    'dash-map-title': 'Outbreak Heatmap',
+    'dash-alerts-title': 'Alerts',
+    'footer-note': 'Prototype for demo — not production. Keep API keys server-side and use consented AgriStack data only with correct authorization.',
+    'btn-ok': 'OK',
+    'disease-label': 'Detected Disease',
+    'confidence-label': 'Confidence Score',
+    'disease-stage': 'Disease Stage',
+    'disease-severity': 'Severity Estimate',
+    'treatment-label': 'Treatment Protocol',
+    'stage-early': 'Early',
+    'stage-mid': 'Mid-Season',
+    'stage-advanced': 'Advanced',
+    'severity-low': 'Low (15-30% affected)',
+    'severity-moderate': 'Moderate (30-60% affected)',
+    'severity-high': 'High (60-95% affected)',
+    'btn-buy': 'Buy Now',
+
+    // Advisory messages (for improved precision)
+    'adv-all-good': 'All good. Monitor sensor data daily.',
+    'adv-irrigation-critical': 'CRITICAL: Immediate irrigation (45 mins) required. Soil moisture is severely low.',
+    'adv-irrigation-monitor': 'ATTENTION: Soil moisture is dipping. Schedule irrigation (20 mins) within 24 hours.',
+    'adv-ph-low': 'PRECISION ALERT: Soil pH is acidic. Consider applying agricultural lime to balance nutrients.',
+    'adv-ph-high': 'PRECISION ALERT: Soil pH is alkaline. Consider sulfur application or organic matter amendment.',
+    'adv-pest-risk': 'PEST RISK: High temperature and humidity increase pest and fungus risk. Inspect leaves and schedule prophylactic spray.',
+    'adv-api-error': "Error handling your message. Try again later.",
+    'adv-fallback-irrigation': 'Current Advisory: Soil conditions suggest minimal water needed. Check current sensor data for confirmation.',
+    'adv-fallback-pest': 'Current Advisory: Pest risk is moderate. Inspect lower leaves for signs of infestation.',
+    'adv-fallback-general': 'Sorry — try asking about irrigation, pests, or soil conditions.'
+  },
+  hi: {
+    'sidebar-title': 'एग्री-टेक',
+    'sidebar-subtitle': 'संयुक्त प्रोटोटाइप',
+    'nav-home': 'होम',
+    'nav-image': 'इमेज पहचान',
+    'nav-kb': 'ज्ञान आधार',
+    'nav-chat': 'चैट / आवाज़',
+    'nav-community': 'समुदाय',
+    'nav-market': 'बाज़ार',
+    'nav-dashboard': 'डैशबोर्ड',
+    'label-language': 'भाषा',
+    'btn-voice-assist': 'वॉयस असिस्टेंट',
+    'welcome-header': 'स्वागत है, किसान!',
+    'welcome-subtitle': 'यह डेमो सेंसर डेटा, इमेज डिटेक्शन, सहमति प्राप्त AgriStack डेटा, चैट/वॉयस और डैशबोर्ड को जोड़ता है।',
+    'demo-note-1': 'VS कोड लाइव सर्वर में खोलें',
+    'demo-note-2': 'इसे लाइव प्रोटोटाइप के रूप में दिखाएं।',
+    'field-indicator': 'खेत सूचक',
+    'status-quick-glance': 'त्वरित स्थिति अवलोकन',
+    'status-all-good': 'सभी सिस्टम सामान्य',
+    'status-attention': 'ध्यान आवश्यक',
+    'status-critical': 'गंभीर चेतावनी',
+    'status-no-action': 'तत्काल कार्रवाई नहीं',
+    'status-action-soon': 'जल्द ही कार्रवाई की सिफारिश',
+    'status-action-today': 'तत्काल कार्रवाई आवश्यक',
+    'sensor-soil-moisture': 'मिट्टी की नमी',
+    'sensor-temperature': 'तापमान',
+    'sensor-humidity': 'आर्द्रता',
+    'sensor-battery': 'बैटरी',
+    'sensor-ph': 'मिट्टी का पीएच',
+    'btn-sim-sensor': 'सेंसर सिम्युलेट करें',
+    'btn-sim-weather': 'मौसम सिम्युलेट करें',
+    'btn-gen-adv': 'सलाहकार उत्पन्न करें',
+    'data-water-saved': 'पानी की बचत:',
+    'data-carbon-est': 'कार्बन अनुमानित:',
+    'chart-soil-title': 'मिट्टी की नमी (हाल की)',
+    'chart-temp-title': 'तापमान (हाल का)',
+    'agristack-title': 'AgriStack नमूना डेटा (सहमति)',
+    'agristack-subtitle': 'मॉडल में सहमति-प्राप्त डेटा उपयोग दिखाने के लिए एक गुमनाम नमूना CSV अपलोड करें (केवल डेमो)।',
+    'agristack-consent': 'सहमति दी गई',
+    'agristack-drop': 'CSV खींचें और छोड़ें या',
+    'agristack-choose-file': 'फ़ाइल चुनें',
+    'agristack-view': 'डेटा देखें / उपयोग करें',
+    'agristack-clear': 'साफ़ करें',
+    'img-header': 'इमेज पहचान',
+    'img-subtitle': 'बीमारी का पता लगाने के लिए एक स्पष्ट पत्ती की छवि अपलोड करें या कैमरे का उपयोग करें। सिस्टम विश्लेषण के आधार पर निदान, सटीकता स्कोर और विशिष्ट सिफारिशें प्रदान करता है (डेमो)।',
+    'img-select-crop': '-- फसल चुनें --',
+    'crop-tomato': 'टमाटर', 'crop-potato': 'आलू', 'crop-wheat': 'गेहूं',
+    'img-upload-prompt': 'इमेज अपलोड करने के लिए क्लिक करें (या कैप्चर के माध्यम से कैमरा उपयोग करें)',
+    'btn-start-cam': 'कैमरा शुरू करें', 'btn-capture': 'कैप्चर', 'btn-stop-cam': 'रोकें',
+    'status-detecting': 'पहचान कर रहा है...',
+    'btn-detect-disease': 'रोग की पहचान करें',
+    'kb-header': 'रोग ज्ञान आधार',
+    'kb-subtitle': 'सामान्य रोग प्रविष्टियाँ खोजें (डेमो/स्थानीय डेटा)।',
+    'kb-search-placeholder': 'खोजें...',
+    'chat-header': 'एग्रीबॉट के साथ चैट करें',
+    'chat-subtitle': 'एक मॉडल एपीआई प्लेसहोल्डर का उपयोग करता है। एपीआई कुंजी को सर्वर-साइड पर इंजेक्ट किया जाना चाहिए; यह डेमो एक सुरक्षित प्लेसहोल्डर और पुन: प्रयास तर्क का उपयोग करता है।',
+    'chat-welcome-msg': 'नमस्ते! मैं एग्रीबॉट हूँ। सिंचाई, कीटों, मिट्टी, या निदान के लिए एक फोटो अपलोड करने के बारे में पूछें।',
+    'chat-input-placeholder': 'अपना प्रश्न टाइप करें...',
+    'btn-send': 'भेजें',
+    'status-thinking': 'सोच रहा है...',
+    'voice-header': 'वॉयस / टीटीएस',
+    'voice-subtitle': 'अंतिम सलाहकार या सक्रिय अनुभाग सामग्री सुनने के लिए बोलें दबाएँ।',
+    'btn-speak': 'बोलें',
+    'btn-speak-adv': 'सलाहकार बोलें',
+    'agro-request-title': 'कृषि विशेषज्ञ का अनुरोध करें',
+    'btn-request-visit': 'विज़िट का अनुरोध करें',
+    'community-header': 'सामुदायिक मंच',
+    'community-placeholder': 'सुझाव, प्रश्न साझा करें...',
+    'btn-post': 'पोस्ट करें',
+    'market-header': 'बाज़ार (नकली)',
+    'dash-trend-title': 'रोग प्रवृत्ति विश्लेषण',
+    'dash-map-title': 'प्रकोप हीटमैप',
+    'dash-alerts-title': 'अलर्ट',
+    'footer-note': 'डेमो के लिए प्रोटोटाइप — उत्पादन के लिए नहीं। एपीआई कुंजी को सर्वर-साइड पर रखें और सही प्राधिकरण के साथ ही सहमति प्राप्त AgriStack डेटा का उपयोग करें।',
+    'btn-ok': 'ठीक है',
+    'disease-label': 'पता लगाया गया रोग',
+    'confidence-label': 'सटीकता स्कोर',
+    'disease-stage': 'रोग चरण',
+    'disease-severity': 'गंभीरता अनुमान',
+    'treatment-label': 'उपचार प्रोटोकॉल',
+    'stage-early': 'प्रारंभिक',
+    'stage-mid': 'मध्य-मौसम',
+    'stage-advanced': 'उन्नत',
+    'severity-low': 'कम (15-30% प्रभावित)',
+    'severity-moderate': 'मध्यम (30-60% प्रभावित)',
+    'severity-high': 'उच्च (60-95% प्रभावित)',
+    'btn-buy': 'अभी खरीदें',
+
+    // Advisory messages (for improved precision)
+    'adv-all-good': 'सब ठीक है। सेंसर डेटा की दैनिक निगरानी करें।',
+    'adv-irrigation-critical': 'गंभीर: तत्काल सिंचाई (45 मिनट) आवश्यक है। मिट्टी की नमी गंभीर रूप से कम है।',
+    'adv-irrigation-monitor': 'ध्यान दें: मिट्टी की नमी कम हो रही है। 24 घंटे के भीतर सिंचाई (20 मिनट) निर्धारित करें।',
+    'adv-ph-low': 'परिशुद्धता अलर्ट: मिट्टी का पीएच अम्लीय है। पोषक तत्वों को संतुलित करने के लिए कृषि चूना डालने पर विचार करें।',
+    'adv-ph-high': 'परिशुद्धता अलर्ट: मिट्टी का पीएच क्षारीय है। सल्फर प्रयोग या कार्बनिक पदार्थ संशोधन पर विचार करें।',
+    'adv-pest-risk': 'कीट जोखिम: उच्च तापमान और आर्द्रता से कीट और फंगस का खतरा बढ़ जाता है। पत्तों का निरीक्षण करें और निवारक स्प्रे निर्धारित करें।',
+    'adv-api-error': "आपके संदेश को संभालने में त्रुटि। कृपया बाद में पुनः प्रयास करें।",
+    'adv-fallback-irrigation': 'वर्तमान सलाहकार: मिट्टी की स्थितियों से पता चलता है कि कम पानी की आवश्यकता है। पुष्टि के लिए वर्तमान सेंसर डेटा की जाँच करें।',
+    'adv-fallback-pest': 'वर्तमान सलाहकार: कीट का जोखिम मध्यम है। संक्रमण के लक्षणों के लिए निचले पत्तों का निरीक्षण करें।',
+    'adv-fallback-general': 'क्षमा करें — सिंचाई, कीटों, या मिट्टी की स्थितियों के बारे में पूछने का प्रयास करें।'
+  }
+};
+
+let currentLang = document.getElementById('langSelect').value;
+
+/**
+ * Translates the entire UI based on the selected language.
+ */
+function translateUI(lang) {
+  currentLang = lang;
+  const t = translations[lang];
+
+  // 1. Static text via data-i18n attributes
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key]) { el.textContent = t[key]; }
+  });
+
+  // 2. Placeholder text via data-i18n-placeholder attributes
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (t[key]) { el.placeholder = t[key]; }
+  });
+
+  // 3. Prefix text via data-i18n-prefix attributes (keeps inner HTML/span content)
+  document.querySelectorAll('[data-i18n-prefix]').forEach(el => {
+    const key = el.getAttribute('data-i18n-prefix');
+    if (t[key]) {
+      const currentContent = el.innerHTML.split(':')[1] || '';
+      el.innerHTML = t[key] + ': ' + currentContent;
+    }
+  });
+
+  // 4. Dynamic text (status) - must be updated on state change, but update language now
+  setStatusDisplay(state.soil, state.pH);
+
+  // 5. Update welcome message in chat window if it's the only message
+  const chatWindow = document.getElementById('chatWindow');
+  if (chatWindow.children.length === 1 && chatWindow.children[0].getAttribute('data-i18n-dynamic') === 'chat-welcome-msg') {
+     chatWindow.children[0].textContent = t['chat-welcome-msg'];
+  }
+
+  // 6. Update modal button text
+  document.getElementById('modalClose').textContent = t['btn-ok'];
+}
+
+/* ============================
+   App State & Helpers
+   ============================ */
+const sections = {
+  home: document.getElementById('home-section'),
+  image: document.getElementById('image-section'),
+  kb: document.getElementById('kb-section'),
+  chat: document.getElementById('chat-section'),
+  community: document.getElementById('community-section'),
+  market: document.getElementById('market-section'),
+  dash: document.getElementById('dash-section')
+};
+const navItems = document.querySelectorAll('.nav-item');
+navItems.forEach(n => n.addEventListener('click', e => {
+  navItems.forEach(x=>x.classList.remove('active'));
+  e.currentTarget.classList.add('active');
+  const sec = e.currentTarget.getAttribute('data-section');
+  Object.values(sections).forEach(s => s.classList.add('hidden'));
+  if(sections[sec]) sections[sec].classList.remove('hidden');
+}));
+
+// Language selection listener
+document.getElementById('langSelect').addEventListener('change', e => {
+    translateUI(e.target.value);
+});
+
+
+// modal
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modalTitle');
+const modalBody = document.getElementById('modalBody');
+document.getElementById('modalClose').addEventListener('click', ()=> modal.classList.add('hidden'));
+function showModal(titleKey, bodyKey){
+  const t = translations[currentLang];
+  modalTitle.textContent = t[titleKey] || titleKey;
+  modalBody.textContent = t[bodyKey] || bodyKey;
+  modal.classList.remove('hidden');
+}
+
+/* ============================
+   Minimal "AgriStack" CSV upload + consent
+   ============================ */
+let agriCsvText = null;
+document.getElementById('agriDrop').addEventListener('click', ()=> document.getElementById('agriFile').click());
+document.getElementById('agriFile').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  const t = translations[currentLang];
+  r.onload = (ev) => {
+    agriCsvText = ev.target.result;
+    document.getElementById('agriPreview').textContent = `${t['agristack-loaded']} ${f.name} — ${Math.round(f.size/1024)} KB`;
+    logAction(`AgriStack CSV loaded: ${f.name} (consent=${document.getElementById('consentToggle').checked})`);
+  };
+  r.readAsText(f);
+});
+document.getElementById('viewAgri').addEventListener('click', ()=>{
+  const t = translations[currentLang];
+  if(!agriCsvText){ showModal('No file', 'Load a small AgriStack sample CSV first.'); return; }
+  if(!document.getElementById('consentToggle').checked){ showModal('Consent required', 'Consent not given — cannot use AgriStack sample data.'); return; }
+  // open preview
+  const w = window.open('', '_blank');
+  w.document.write(`<pre style="font-family:monospace;white-space:pre-wrap;">${agriCsvText.slice(0,5000)}</pre>`);
+  logAction('AgriStack sample viewed (consented).');
+});
+document.getElementById('clearAgri').addEventListener('click', ()=>{
+  agriCsvText = null; document.getElementById('agriPreview').textContent = ''; logAction('AgriStack sample cleared.');
+});
+
+/* ============================
+   Sensor simulation & UI (PRECISION IMPROVEMENT)
+   - Added pH state and status logic
+   ============================ */
+// Added pH: 6.5 for precision
+const state = { soil:35, temp:25, hum:60, bat:88, pH: 6.5, lastSync:Date.now(), waterSaved:0, carbon:0, advisory:'' };
+const soilVal = document.getElementById('soilVal'), tempVal = document.getElementById('tempVal'), humVal = document.getElementById('humVal'), batVal = document.getElementById('batVal'), pHVal = document.getElementById('pHVal');
+const ledElm = document.getElementById('ledElm'), statusTitle = document.getElementById('statusTitle'), statusSub = document.getElementById('statusSub');
+const waterSavedEl = document.getElementById('waterSaved'), carbonEl = document.getElementById('carbonEst');
+
+function setStatusDisplay(soil, pH){
+  const t = translations[currentLang];
+  let status, sub, ledClass;
+
+  if(soil < 18 || pH < 5.5 || pH > 8.0) {
+    ledClass = 'red'; status = t['status-critical']; sub = t['status-action-today'];
+  } else if(soil < 28 || (pH >= 5.5 && pH < 6.0) || (pH > 7.5 && pH <= 8.0)) {
+    ledClass = 'amber'; status = t['status-attention']; sub = t['status-action-soon'];
+  } else {
+    ledClass = 'green'; status = t['status-all-good']; sub = t['status-no-action'];
+  }
+  
+  ledElm.className=`led ${ledClass}`;
+  statusTitle.textContent = status;
+  statusSub.textContent = sub;
+}
+
+function renderSensors(){
+  soilVal.textContent = Math.round(state.soil)+' %';
+  tempVal.textContent = Math.round(state.temp)+' °C';
+  humVal.textContent = Math.round(state.hum)+' %';
+  batVal.textContent = Math.round(state.bat)+' %';
+  pHVal.textContent = state.pH.toFixed(1); // Precision display for pH
+  waterSavedEl.textContent = Math.round(state.waterSaved)+' L';
+  carbonEl.textContent = state.carbon.toFixed(2)+' kg CO₂';
+  setStatusDisplay(state.soil, state.pH);
+}
+
+document.getElementById('simSensor').addEventListener('click', ()=>{
+  state.soil = Math.max(6, state.soil + (Math.random()-0.6)*8);
+  state.temp = Math.max(-2, state.temp + (Math.random()-0.5)*3);
+  state.hum = Math.min(100, Math.max(5, state.hum + (Math.random()-0.5)*6));
+  state.pH = Math.min(9.0, Math.max(4.5, state.pH + (Math.random()-0.5)*0.5)); // Simulate pH change
+  state.lastSync = Date.now();
+  if(state.soil>30){ state.waterSaved += Math.round(Math.random()*8); state.carbon += Math.random()*0.12; }
+  logAction('Sensor simulated: telemetry uploaded.');
+  pushCharts();
+  renderSensors();
+});
+
+document.getElementById('simWeather').addEventListener('click', ()=>{
+  const r=Math.random();
+  if(r<0.4){ state.soil = Math.min(100, state.soil + Math.round(6 + Math.random()*12)); logAction('Weather: light rain simulated.'); }
+  else if(r<0.8){ state.temp += 2 + Math.round(Math.random()*3); logAction('Weather: hot day simulated.'); }
+  else { state.soil = Math.max(2, state.soil - (6 + Math.round(Math.random()*10))); state.hum = Math.max(4, state.hum - 6); logAction('Weather: dry/windy simulated.'); }
+  state.lastSync = Date.now(); renderSensors(); pushCharts();
+});
+
+document.getElementById('genAdv').addEventListener('click', ()=>{
+  generateAdvisory();
+});
+
+/* advisory generator (IMPROVED PRECISION LOGIC) */
+function generateAdvisory(){
+  let msg = [];
+  const t = translations[currentLang];
+
+  // 1. Soil Moisture Check
+  if(state.soil < 20){
+    msg.push(t['adv-irrigation-critical']);
+  } else if(state.soil < 30){
+    msg.push(t['adv-irrigation-monitor']);
+  }
+
+  // 2. pH Check
+  if (state.pH < 6.0) {
+    msg.push(t['adv-ph-low']);
+  } else if (state.pH > 7.5) {
+    msg.push(t['adv-ph-high']);
+  }
+
+  // 3. Temperature/Humidity Check (Pest Risk)
+  if (state.temp > 30 && state.hum > 70) {
+    msg.push(t['adv-pest-risk']);
+  }
+
+  if (msg.length === 0) {
+    msg.push(t['adv-all-good']);
+  }
+
+  state.advisory = msg.join(' | ');
+  logAction('Advisory generated: ' + state.advisory);
+  appendChatBot(state.advisory);
+}
+
+/* ============================
+   Charts (soil & temp)
+   ============================ */
+const soilCtx = document.getElementById('soilChart').getContext('2d');
+const tempCtx = document.getElementById('tempChart').getContext('2d');
+const soilData = { labels:[], datasets:[{ label:'Soil %', data:[], tension:0.4, fill:true, backgroundColor:'rgba(16,185,129,0.08)', borderColor:'#10b981' }]};
+const tempData = { labels:[], datasets:[{ label:'Temp °C', data:[], tension:0.4, fill:true, backgroundColor:'rgba(6,182,212,0.06)', borderColor:'#06b6d4' }]};
+const soilChart = new Chart(soilCtx, { type:'line', data:soilData, options:{plugins:{legend:{display:false}}, scales:{y:{min:0,max:100}}}});
+const tempChart = new Chart(tempCtx, { type:'line', data:tempData, options:{plugins:{legend:{display:false}}}});
+
+function updateChartLabels() {
+  // Update dataset labels on language change
+  const t = translations[currentLang];
+  soilChart.data.datasets[0].label = t['sensor-soil-moisture'];
+  tempChart.data.datasets[0].label = t['sensor-temperature'];
+  soilChart.update();
+  tempChart.update();
+}
+
+function pushCharts(){
+  const t = new Date().toLocaleTimeString();
+  soilData.labels.push(t); soilData.datasets[0].data.push(state.soil);
+  tempData.labels.push(t); tempData.datasets[0].data.push(state.temp);
+  if(soilData.labels.length>20){ soilData.labels.shift(); soilData.datasets[0].data.shift(); tempData.labels.shift(); tempData.datasets[0].data.shift(); }
+  soilChart.update(); tempChart.update();
+}
+
+/* initialize */
+renderSensors();
+pushCharts();
+translateUI(currentLang);
+
+
+/* ============================
+   AgriBot chat (Gemini-like placeholder)
+   ============================ */
+const chatWindow = document.getElementById('chatWindow');
+const chatInput = document.getElementById('chatInput');
+const chatSend = document.getElementById('chatSend');
+const chatLoading = document.getElementById('chatLoading');
+
+function appendMsg(sender, text){
+  const el = document.createElement('div');
+  el.className = 'msg ' + (sender==='user'?'user':'bot');
+  el.textContent = text;
+  // Clear dynamic i18n attribute for new user/bot messages
+  if (sender !== 'user') el.removeAttribute('data-i18n-dynamic');
+  chatWindow.appendChild(el);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+function appendChatBot(text){ appendMsg('bot', text); }
+chatSend.addEventListener('click', sendChat);
+chatInput.addEventListener('keypress', e=> { if(e.key==='Enter') sendChat(); });
+
+async function sendChat(){
+  const q = chatInput.value.trim(); if(!q) return;
+  appendMsg('user', q); chatInput.value=''; chatLoading.classList.remove('hidden');
+  const t = translations[currentLang];
+  try{
+    // Build payload for generative model (server-side recommended)
+    const system = (currentLang==='hi') ? "आप एक अनुभवी कृषि विशेषज्ञ हैं जो किसानों को उनकी मिट्टी, फसल, सिंचाई और कीट प्रबंधन पर सटीक सलाह देते हैं। हिंदी में संक्षिप्त और उपयोगी उत्तर दें।" : "You are an experienced agricultural expert providing precise advice to farmers on soil, crops, irrigation, and pest management. Give concise and helpful answers.";
+    const payload = { contents: [{ parts: [{ text: q }] }], systemInstruction: { parts:[{ text: system }] } };
+    const apiKey = "";//Replace with your API key
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    let res=null; let attempt=0; const maxRetries=2;
+    while(attempt<=maxRetries){
+      try{
+        res = await fetch(apiUrl, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+        if(res && res.ok) break;
+      }catch(err){ console.warn('API attempt failed', attempt, err); }
+      attempt++; await new Promise(r=>setTimeout(r, 1000*(2**attempt)));
+    }
+    if(res && res.ok){
+      const j = await res.json();
+      const text = j.candidates?.[0]?.content?.parts?.[0]?.text || t['adv-api-error'];
+      appendChatBot(text);
+      logAction('Chatbot responded via API.');
+    } else {
+      const fallback = heuristicReply(q);
+      appendChatBot(fallback);
+      logAction('Chatbot fallback responded (no API).');
+    }
+  }catch(e){ console.error(e); appendChatBot(t['adv-api-error']); }
+  finally{ chatLoading.classList.add('hidden'); }
+}
+
+function heuristicReply(q){
+  const lq = q.toLowerCase();
+  const t = translations[currentLang];
+  if(lq.includes('irrig') || lq.includes('पानी') || lq.includes('सिच')){
+    generateAdvisory();
+    return state.advisory;
+  }
+  if(lq.includes('pest') || lq.includes('कीट')){
+    return t['adv-fallback-pest'];
+  }
+  if(lq.includes('ph') || lq.includes('soil') || lq.includes('मिट्टी')){
+    return (currentLang==='hi')
+        ? `वर्तमान मिट्टी का पीएच: ${state.pH.toFixed(1)}। इष्टतम रेंज 6.0-7.5 है।`
+        : `Current Soil pH: ${state.pH.toFixed(1)}. Optimal range is 6.0-7.5.`;
+  }
+  return t['adv-fallback-general'];
+}
+
+/* ============================
+   Image detection (mock classifier) + camera capture
+   ============================ */
+const uploadArea = document.getElementById('uploadArea'), imgFile = document.getElementById('imgFile'), previewImg = document.getElementById('previewImg');
+uploadArea.addEventListener('click', ()=> imgFile.click());
+imgFile.addEventListener('change', (e)=> {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = (ev)=> { previewImg.src = ev.target.result; previewImg.classList.remove('hidden'); };
+  r.readAsDataURL(f);
+});
+let cameraStream = null;
+document.getElementById('startCam').addEventListener('click', async ()=>{
+  try{
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video:true });
+    const video = document.createElement('video'); video.autoplay=true; video.srcObject = cameraStream;
+    uploadArea.innerHTML = ''; uploadArea.appendChild(video);
+    document.getElementById('capture').classList.remove('hidden');
+    document.getElementById('stopCam').classList.remove('hidden');
+  }catch(e){ showModal('Camera error','Unable to access camera.'); }
+});
+document.getElementById('stopCam').addEventListener('click', ()=> {
+  if(cameraStream) cameraStream.getTracks().forEach(t=>t.stop());
+  cameraStream = null;
+  const t = translations[currentLang];
+  uploadArea.innerHTML = `<i class="fas fa-cloud-upload-alt text-3xl text-gray-400"></i>
+            <div class="mt-2 text-gray-500">${t['img-upload-prompt']}</div>`;
+  document.getElementById('capture').classList.add('hidden');
+  document.getElementById('stopCam').classList.add('hidden');
+});
+document.getElementById('capture').addEventListener('click', ()=>{
+  if(!cameraStream) return;
+  const v = uploadArea.querySelector('video');
+  const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+  const data = c.toDataURL('image/jpeg');
+  previewImg.src = data; previewImg.classList.remove('hidden');
+  // stop camera
+  cameraStream.getTracks().forEach(t=>t.stop()); cameraStream=null;
+  const t = translations[currentLang];
+  uploadArea.innerHTML = `<i class="fas fa-cloud-upload-alt text-3xl text-gray-400"></i>
+            <div class="mt-2 text-gray-500">${t['img-upload-prompt']}</div>`;
+  document.getElementById('capture').classList.add('hidden'); document.getElementById('stopCam').classList.add('hidden');
+});
+
+document.getElementById('detectBtn').addEventListener('click', async ()=>{
+  const crop = document.getElementById('cropSelect').value;
+  const t = translations[currentLang];
+  if(!crop){ showModal('Select crop','Please select a crop before detection.'); return; }
+  const hasImage = previewImg.src && previewImg.src!=='';
+  if(!hasImage){ showModal('No image','Please upload or capture an image first.'); return; }
+  document.getElementById('loadingDetect').classList.remove('hidden');
+  await new Promise(r=>setTimeout(r,1400)); // simulate model latency
+  document.getElementById('loadingDetect').classList.add('hidden');
+
+  // --- START PRECISION MOCK DATA AND LOGIC ---
+  const stages = ['stage-early', 'stage-mid', 'stage-advanced'];
+  const severities = ['severity-low', 'severity-moderate', 'severity-high'];
+  
+  // Randomly pick stage and severity
+  const stageKey = stages[Math.floor(Math.random() * stages.length)];
+  const severityKey = severities[Math.floor(Math.random() * severities.length)];
+
+  // Localized mock data for demo
+  const mockDiseases = {
+    Tomato: { 
+      name_en:'Tomato Late Blight', name_hi:'टमाटर देर से झुलसना', conf:0.87, 
+      treatments_en:['Apply Copper Oxychloride fungicide (2.5g/L) immediately.', 'Remove and destroy all heavily infected plant matter.', 'Improve air circulation and drainage.'], 
+      treatments_hi:['तत्काल कॉपर ऑक्सीक्लोराइड फंगीसाइड (2.5 ग्राम/लीटर) का उपयोग करें।', 'संक्रमित पौधे के सभी भागों को हटा दें और नष्ट कर दें।', 'हवा के संचार और जल निकासी में सुधार करें।'] 
+    },
+    Potato: { 
+      name_en:'Potato Early Blight', name_hi:'आलू प्रारंभिक झुलसना', conf:0.82, 
+      treatments_en:['Initiate a protective fungicide spray program.', 'Ensure 3-year crop rotation to break the disease cycle.', 'Maintain consistent irrigation to avoid plant stress.'], 
+      treatments_hi:['एक सुरक्षात्मक फंगीसाइड स्प्रे कार्यक्रम शुरू करें।', 'रोग चक्र को तोड़ने के लिए 3-वर्षीय फसल चक्रण सुनिश्चित करें।', 'पौधे के तनाव से बचने के लिए लगातार सिंचाई बनाए रखें।'] 
+    },
+    Wheat: { 
+      name_en:'Wheat Rust (Stripe Rust)', name_hi:'गेहूं का रस्ट (धारी रस्ट)', conf:0.91, 
+      treatments_en:['Apply a systemic fungicide (e.g., Propiconazole) as soon as symptoms appear.', 'Use nitrogen fertilizer sparingly.', 'Next season, plant resistant wheat varieties.'], 
+      treatments_hi:['लक्षण दिखते ही एक प्रणालीगत फंगीसाइड (जैसे प्रोपिकोनाजोल) का उपयोग करें।', 'नाइट्रोजन उर्वरक का प्रयोग कम करें।', 'अगले सीजन में, प्रतिरोधी गेहूं की किस्में लगाएँ।'] 
+    }
+  };
+
+  const demo = mockDiseases[crop] || { 
+    name_en:'Undiagnosed Leaf Spot', name_hi:'अज्ञात पत्ती धब्बा', conf:0.45, 
+    treatments_en:['Visual inspection by agronomist recommended.', 'Send soil sample for nutrient analysis.'], 
+    treatments_hi:['कृषि विशेषज्ञ द्वारा दृश्य निरीक्षण की सिफारिश की जाती है।', 'पोषक तत्वों के विश्लेषण के लिए मिट्टी का नमूना भेजें।'] 
+  };
+  
+  const isHindi = currentLang === 'hi';
+  const diseaseName = isHindi ? demo.name_hi : demo.name_en;
+  const treatments = isHindi ? demo.treatments_hi : demo.treatments_en;
+  
+  // Detailed output content generation
+  const detailsHTML = `
+    <div class="space-y-2">
+      <div class="flex justify-between items-center border-b pb-1">
+        <strong class="text-gray-500">${t['disease-label']}</strong>
+        <span class="text-lg font-bold text-red-600">${diseaseName}</span>
+      </div>
+      <div class="flex justify-between">
+        <strong class="text-gray-500">${t['confidence-label']}</strong>
+        <span class="font-semibold text-emerald-600">${(demo.conf*100).toFixed(1)}%</span>
+      </div>
+      <div class="flex justify-between">
+        <strong class="text-gray-500">${t['disease-stage']}</strong>
+        <span class="font-semibold">${t[stageKey]}</span>
+      </div>
+      <div class="flex justify-between">
+        <strong class="text-gray-500">${t['disease-severity']}</strong>
+        <span class="font-semibold text-orange-500">${t[severityKey]}</span>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('detectResult').classList.remove('hidden');
+  document.getElementById('detectResult').innerHTML = detailsHTML;
+  document.getElementById('treatmentBox').classList.remove('hidden');
+  document.getElementById('treatmentBox').innerHTML = `
+    <strong class="block mb-2 text-gray-700">${t['treatment-label']}</strong>
+    <ul class="list-disc ml-5 mt-2 space-y-1">
+      ${treatments.map(t=>`<li class="text-sm">${t}</li>`).join('')}
+    </ul>
+    <button class="mt-4 px-3 py-1 bg-amber-500 text-white text-xs rounded hover:bg-amber-600">${t['btn-buy']}</button>
+  `;
+
+  logAction(`Image detected: ${diseaseName} (conf ${(demo.conf*100).toFixed(1)}%)`);
+});
+
+/* ============================
+   Knowledge base, Community & Marketplace (mock)
+   ============================ */
+const allMockDiseases = [
+  { name_en:'Tomato Late Blight', name_hi:'टमाटर देर से झुलसना', crop:'Tomato', symptoms_en:'Dark lesions on leaves and stems.', symptoms_hi:'पत्तों और तनों पर गहरे घाव।', treatments_en:['Copper fungicide','Remove infected parts'], treatments_hi:['कॉपर फंगीसाइड','संक्रमित भागों को हटा दें'] },
+  { name_en:'Potato Early Blight', name_hi:'आलू प्रारंभिक झुलसना', crop:'Potato', symptoms_en:'Dark rings on older leaves.', symptoms_hi:'पुराने पत्तों पर गहरे छल्ले।', treatments_en:['Crop rotation','Protective fungicide'], treatments_hi:['फसल चक्रण','सुरक्षात्मक फंगीसाइड'] },
+  { name_en:'Wheat Rust', name_hi:'गेहूं का रस्ट', crop:'Wheat', symptoms_en:'Orange pustules on stems and leaves.', symptoms_hi:'तनों और पत्तों पर नारंगी रंग के फफोले।', treatments_en:['Resistant varieties','Fungicide'], treatments_hi:['प्रतिरोधी किस्में','फंगीसाइड'] }
+];
+function renderKB(list){
+  const container = document.getElementById('kbList'); container.innerHTML='';
+  const isHindi = currentLang === 'hi';
+  const t = translations[currentLang];
+  list.forEach(d => {
+    const el = document.createElement('div'); el.className='card';
+    const name = isHindi ? d.name_hi : d.name_en;
+    const symptoms = isHindi ? d.symptoms_hi : d.symptoms_en;
+    const treatments = isHindi ? d.treatments_hi : d.treatments_en;
+    const cropName = isHindi ? translations['hi']['crop-'+d.crop.toLowerCase()] || d.crop : d.crop;
+    
+    el.innerHTML = `<div><strong>${name} (${cropName})</strong><p class="text-sm text-gray-600 mt-1">${symptoms}</p><p class="mt-2 text-sm"><strong>${t['treatment-label'] || 'Remedies'}:</strong><ul class="list-disc ml-5">${treatments.map(t=>`<li>${t}</li>`).join('')}</ul></p></div>`;
+    container.appendChild(el);
+  });
+}
+document.getElementById('kbSearch').addEventListener('input', e => {
+  const v = e.target.value.toLowerCase();
+  renderKB(allMockDiseases.filter(d => 
+    d.name_en.toLowerCase().includes(v) || 
+    d.name_hi.toLowerCase().includes(v) ||
+    d.symptoms_en.toLowerCase().includes(v) || 
+    d.symptoms_hi.toLowerCase().includes(v)
+  ));
+});
+renderKB(allMockDiseases);
+
+/* Community */
+const posts = [
+  { id:1, author:'Ramesh', content_en:'Started drip irrigation, saw 15% water saving', content_hi:'ड्रिप सिंचाई शुरू की, 15% पानी की बचत देखी', ts:Date.now()-3600000 },
+  { id:2, author:'Sita', content_en:'Anyone used neem oil for aphids?', content_hi:'क्या किसी ने एफिड्स के लिए नीम के तेल का इस्तेमाल किया है?', ts:Date.now()-1800000 }
+];
+function renderPosts(){
+  const c = document.getElementById('posts'); c.innerHTML='';
+  const isHindi = currentLang === 'hi';
+  posts.forEach(p => {
+    const el = document.createElement('div'); el.className='card';
+    const content = isHindi ? p.content_hi : p.content_en;
+    el.innerHTML = `<div><strong>${p.author}</strong> <span class="text-xs text-gray-400">· ${new Date(p.ts).toLocaleString()}</span><p class="mt-2 text-sm">${content}</p></div>`;
+    c.appendChild(el);
+  });
+}
+document.getElementById('postBtn').addEventListener('click', ()=>{
+  const t = document.getElementById('postBox').value.trim(); if(!t) return;
+  // For new posts, just store the English version for simplicity in the demo
+  posts.unshift({ id: Date.now(), author:'local-user', content_en:t, content_hi:t, ts:Date.now() });
+  document.getElementById('postBox').value=''; renderPosts(); logAction('Community post added (local).');
+});
+renderPosts();
+
+/* Marketplace */
+const products = [
+  { id:1, name_en:'Organic Compost', name_hi:'जैविक खाद', price:'₹500 / bag', img:'https://placehold.co/300x200/90EE90/FFFFFF?text=Compost' },
+  { id:2, name_en:'Neem Oil', name_hi:'नीम का तेल', price:'₹250 / bottle', img:'https://placehold.co/300x200/B0C4DE/FFFFFF?text=Neem+Oil' }
+];
+const prodcont = document.getElementById('products');
+function renderProducts() {
+  prodcont.innerHTML = '';
+  const isHindi = currentLang === 'hi';
+  const buyText = translations[currentLang]['btn-buy'] || 'Buy';
+  products.forEach(p => {
+    const card = document.createElement('div'); card.className='card';
+    const name = isHindi ? p.name_hi : p.name_en;
+    card.innerHTML = `<img src="${p.img}" class="w-full h-40 object-cover rounded mb-3"><div><strong>${name}</strong><div class="text-green-600 mt-2">${p.price}</div><button class="mt-3 px-3 py-2 bg-emerald-500 text-white rounded">${buyText}</button></div>`;
+    prodcont.appendChild(card);
+  });
+}
+renderProducts();
+
+/* Dashboard charts & map */
+const trendCtx = document.getElementById('trendChart').getContext('2d');
+new Chart(trendCtx, {
+  type: 'line',
+  data: { labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[{label:'Late Blight',data:[12,19,3,5,2,3], borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.12)', fill:true}] },
+  options:{ scales:{ y:{ beginAtZero:true } } }
+});
+const map = L.map('map').setView([20.5937,78.9629],5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+const mockOutbreaks = [{lat:26.8467,lng:80.9462,d_en:'Late Blight',d_hi:'देर से झुलसना'},{lat:28.7041,lng:77.1025,d_en:'Rust',d_hi:'रस्ट'}];
+mockOutbreaks.forEach(o=> L.marker([o.lat,o.lng]).addTo(map).bindPopup(`<b>${currentLang === 'hi' ? o.d_hi : o.d_en}</b>`));
+
+/* Alerts */
+const alerts = [
+  {id:1,title_en:'Monsoon Alert',content_en:'Heavy rainfall expected this week', title_hi:'मानसून अलर्ट', content_hi:'इस सप्ताह भारी वर्षा की उम्मीद है'}, 
+  {id:2,title_en:'Pest warning',content_en:'Pest activity rising in nearby blocks', title_hi:'कीट चेतावनी', content_hi:'आस-पास के ब्लॉकों में कीटों की गतिविधि बढ़ रही है'}
+];
+const alertsEl = document.getElementById('alerts');
+function renderAlerts() {
+  alertsEl.innerHTML = '';
+  const isHindi = currentLang === 'hi';
+  alerts.forEach(a=> {
+    const title = isHindi ? a.title_hi : a.title_en;
+    const content = isHindi ? a.content_hi : a.content_en;
+    alertsEl.innerHTML += `<div class="p-2 rounded border-l-4 border-blue-500 bg-blue-50"><strong>${title}</strong><div class="text-sm">${content}</div></div>`;
+  });
+}
+renderAlerts();
+
+
+/* ============================
+   Voice / TTS & Read Active Section
+   ============================ */
+const langSel = document.getElementById('langSelect');
+langSel.addEventListener('change', ()=> { 
+    currentLang = langSel.value; 
+    translateUI(currentLang);
+    updateChartLabels();
+    renderKB(allMockDiseases);
+    renderPosts();
+    renderProducts();
+    renderAlerts();
+    // Re-render map markers for new language (quick fix for demo)
+    map.eachLayer(layer => {
+        if(layer instanceof L.Marker) map.removeLayer(layer);
+    });
+    mockOutbreaks.forEach(o=> L.marker([o.lat,o.lng]).addTo(map).bindPopup(`<b>${currentLang === 'hi' ? o.d_hi : o.d_en}</b>`));
+});
+
+
+document.getElementById('voiceRead').addEventListener('click', ()=> {
+  const active = Array.from(document.querySelectorAll('.section')).find(s => !s.classList.contains('hidden'));
+  if(!active) return;
+  const text = active.innerText.replace(/\s+/g,' ').slice(0,1000);
+  speakText(text);
+});
+document.getElementById('speakBtn').addEventListener('click', ()=> {
+  const text = state.advisory || translations[currentLang]['adv-all-good'];
+  speakText(text);
+});
+document.getElementById('synthAdv').addEventListener('click', ()=> {
+  const text = state.advisory || translations[currentLang]['adv-all-good'];
+  speakText(text);
+});
+
+function speakText(text){
+  const t = translations[currentLang];
+  if(!('speechSynthesis' in window)) { showModal('TTS not supported','Your browser does not support speech synthesis.'); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = (currentLang==='hi') ? 'hi-IN' : 'en-US';
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+}
+
+/* ============================
+   Agronomist request (mock)
+   ============================ */
+document.getElementById('callAgro').addEventListener('click', ()=> {
+  const logMsg = (currentLang === 'hi') ? 'अनुरोध दर्ज किया गया — कृषि विशेषज्ञ 24-48 घंटों के भीतर संपर्क करेंगे (डेमो)।' : 'Request placed — agronomist will contact within 24–48 hrs (demo).';
+  document.getElementById('agroLog').textContent = logMsg;
+  logAction('Agronomist requested for farmer.');
+});
+
+/* ============================
+   Logging helper for Admin/Consent logs
+   ============================ */
+const logStack = [];
+function logAction(msg){
+  const t = new Date().toLocaleString();
+  logStack.push(`[${t}] ${msg}`);
+  if(logStack.length>200) logStack.shift();
+  console.log(logStack.slice(-5).join('\n'));
+}
+
+/* ============================
+   Utility: small autosim for liveliness
+   ============================ */
+setInterval(()=> {
+  state.soil += (Math.random()-0.5)*0.8;
+  state.temp += (Math.random()-0.5)*0.3;
+  state.hum += (Math.random()-0.5)*0.4;
+  state.pH += (Math.random()-0.5)*0.1; // Slower pH change
+  state.bat = Math.max(0, state.bat - 0.02);
+  renderSensors();
+  pushCharts();
+}, 5000);
+
+/* ============================
+   Simple startup actions & exposure
+   ============================ */
+document.getElementById('userId').textContent = `User: local-demo (no firebase)`;
+
+</script>
+</body>
+</html>
