@@ -16,7 +16,7 @@ Charts for soil moisture and temperature trends
 
 Advisory generator with precision irrigation and soil health recommendations
 
-🔹 Image Detection
+🔹 Image Detection (Img)
 
 Upload or capture crop leaf images
 
